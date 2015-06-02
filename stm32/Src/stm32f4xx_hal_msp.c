@@ -33,6 +33,7 @@
   */
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f4xx_hal.h"
+#include "waveform.h"
 
 extern DMA_HandleTypeDef hdma_dac1;
 
@@ -208,7 +209,7 @@ void HAL_DAC_MspInit(DAC_HandleTypeDef* hdac)
     __HAL_LINKDMA(hdac,DMA_Handle1,hdma_dac1);
 
   /* USER CODE BEGIN DAC_MspInit 1 */
-
+    HAL_DAC_Start_DMA(hdac, DAC_CHANNEL_1, (uint32_t*)&wave_buff, WAVE_BUFF_LEN, DAC_ALIGN_12B_R);
   /* USER CODE END DAC_MspInit 1 */
   }
 
@@ -250,6 +251,7 @@ void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* htim_base)
     /* Peripheral clock enable */
     __TIM6_CLK_ENABLE();
   /* USER CODE BEGIN TIM6_MspInit 1 */
+    HAL_TIM_Base_Start_IT(htim_base);
 
   /* USER CODE END TIM6_MspInit 1 */
   }
@@ -264,6 +266,7 @@ void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* htim_base)
     HAL_NVIC_SetPriority(TIM7_IRQn, 0, 0);
     HAL_NVIC_EnableIRQ(TIM7_IRQn);
   /* USER CODE BEGIN TIM7_MspInit 1 */
+    HAL_TIM_Base_Start_IT(htim_base);
 
   /* USER CODE END TIM7_MspInit 1 */
   }

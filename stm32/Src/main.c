@@ -330,6 +330,19 @@ void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
+/**
+  * @brief  Period elapsed callback in non blocking mode 
+  * @param  htim: pointer to a TIM_HandleTypeDef structure that contains
+  *                the configuration information for TIM module.
+  * @retval None
+  */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  if (htim == &htim7) {
+    // TBD
+  }
+}
+
 /* USER CODE END 4 */
 
 #ifdef USE_FULL_ASSERT

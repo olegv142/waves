@@ -43,7 +43,7 @@
         </option>
         <option>
           <name>Input description</name>
-          <state></state>
+          <state>Full formatting.</state>
         </option>
         <option>
           <name>Output variant</name>
@@ -52,7 +52,7 @@
         </option>
         <option>
           <name>Output description</name>
-          <state></state>
+          <state>Full formatting.</state>
         </option>
         <option>
           <name>GOutputBinary</name>
@@ -143,7 +143,7 @@
         <option>
           <name>GBECoreSlave</name>
           <version>21</version>
-          <state>39</state>
+          <state>40</state>
         </option>
         <option>
           <name>OGUseCmsis</name>
@@ -173,6 +173,7 @@
         <option>
           <name>CCDefines</name>
           <state>USE_HAL_DRIVER</state>
+          <state>USE_FULL_ASSERT</state>
           <state>STM32F405xx</state>
         </option>
         <option>

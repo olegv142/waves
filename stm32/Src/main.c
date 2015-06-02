@@ -36,6 +36,10 @@
 
 /* USER CODE BEGIN Includes */
 
+#define assert assert_param
+#define LED_ON  GPIO_PIN_RESET
+#define LED_OFF GPIO_PIN_SET
+
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -63,13 +67,44 @@ static void MX_ADC2_Init(void);
 static void MX_DAC_Init(void);
 static void MX_TIM6_Init(void);
 static void MX_TIM7_Init(void);
-static void MX_USART1_UART_Init(void);
+static void MX_USART1_UART_Init(unsigned rate);
 
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
+
+static uint8_t at_mode_cmd[]  = "AT+BTMODE,3\r";
+static uint8_t at_rate_cmd[]  = "AT+UARTCONFIG,115200,N,1,0\r";
+static uint8_t at_reset_cmd[] = "ATZ\r";
+
+static void configure_modem()
+{
+  HAL_StatusTypeDef res;
+
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_12, LED_OFF);
+  MX_USART1_UART_Init(9600);
+
+  res = HAL_UART_Transmit(&huart1, at_mode_cmd, sizeof(at_mode_cmd)-1, HAL_MAX_DELAY);
+  assert(res != HAL_OK);
+
+  HAL_Delay(1500);
+
+  res = HAL_UART_Transmit(&huart1, at_rate_cmd, sizeof(at_rate_cmd)-1, HAL_MAX_DELAY);
+  assert(res != HAL_OK);
+
+  HAL_Delay(1500);
+
+  MX_USART1_UART_Init(115200);
+
+  res = HAL_UART_Transmit(&huart1, at_reset_cmd, sizeof(at_reset_cmd)-1, HAL_MAX_DELAY);
+  assert(res != HAL_OK);
+
+  HAL_Delay(1500);
+
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_12, LED_ON);
+}
 
 /* USER CODE END 0 */
 
@@ -96,10 +131,9 @@ int main(void)
   MX_DAC_Init();
   MX_TIM6_Init();
   MX_TIM7_Init();
-  MX_USART1_UART_Init();
 
   /* USER CODE BEGIN 2 */
-
+  configure_modem();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -267,11 +301,11 @@ void MX_TIM7_Init(void)
 }
 
 /* USART1 init function */
-void MX_USART1_UART_Init(void)
+void MX_USART1_UART_Init(unsigned rate)
 {
 
   huart1.Instance = USART1;
-  huart1.Init.BaudRate = 9600;
+  huart1.Init.BaudRate = rate;
   huart1.Init.WordLength = UART_WORDLENGTH_8B;
   huart1.Init.StopBits = UART_STOPBITS_1;
   huart1.Init.Parity = UART_PARITY_NONE;
@@ -339,7 +373,9 @@ void MX_GPIO_Init(void)
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   if (htim == &htim7) {
-    // TBD
+    uint8_t msg[] = "*";
+    HAL_StatusTypeDef res = HAL_UART_Transmit_IT(&huart1, msg, sizeof(msg)-1);
+    assert(res != HAL_OK);
   }
 }
 

@@ -36,6 +36,8 @@
 
 /* USER CODE BEGIN Includes */
 
+#include "acquisition.h"
+
 #define assert assert_param
 #define LED_ON  GPIO_PIN_RESET
 #define LED_OFF GPIO_PIN_SET
@@ -45,12 +47,13 @@
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
 ADC_HandleTypeDef hadc2;
+DMA_HandleTypeDef hdma_adc1;
 
 DAC_HandleTypeDef hdac;
 DMA_HandleTypeDef hdma_dac1;
 
-TIM_HandleTypeDef htim1;
-TIM_HandleTypeDef htim6;
+TIM_HandleTypeDef htim2;
+TIM_HandleTypeDef htim3;
 
 UART_HandleTypeDef huart1;
 
@@ -65,8 +68,8 @@ static void MX_DMA_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_ADC2_Init(void);
 static void MX_DAC_Init(void);
-static void MX_TIM1_Init(void);
-static void MX_TIM6_Init(void);
+static void MX_TIM2_Init(void);
+static void MX_TIM3_Init(void);
 static void MX_USART1_UART_Init(unsigned rate);
 
 /* USER CODE BEGIN PFP */
@@ -106,6 +109,15 @@ static void configure_modem()
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_12, LED_ON);
 }
 
+static void acquisition_start(void)
+{
+	HAL_DAC_Start_DMA(&hdac, DAC_CHANNEL_1, (uint32_t*)&wave_buff, WAVE_BUFF_LEN, DAC_ALIGN_12B_R);
+	HAL_ADC_Start_IT(&hadc2);
+	HAL_ADC_Start_DMA(&hadc1, (uint32_t*)&mic_buff, WAVE_BUFF_LEN);
+	HAL_TIM_Base_Start(&htim2);
+	HAL_TIM_Base_Start_IT(&htim3);
+}
+
 /* USER CODE END 0 */
 
 int main(void)
@@ -129,11 +141,13 @@ int main(void)
   MX_ADC1_Init();
   MX_ADC2_Init();
   MX_DAC_Init();
-  MX_TIM1_Init();
-  MX_TIM6_Init();
+  MX_TIM2_Init();
+  MX_TIM3_Init();
 
   /* USER CODE BEGIN 2 */
   configure_modem();
+  acquisition_init();
+  acquisition_start();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -190,7 +204,6 @@ void MX_ADC1_Init(void)
 {
 
   ADC_ChannelConfTypeDef sConfig;
-  ADC_InjectionConfTypeDef sConfigInjected;
 
     /**Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion) 
     */
@@ -200,10 +213,11 @@ void MX_ADC1_Init(void)
   hadc1.Init.ScanConvMode = DISABLE;
   hadc1.Init.ContinuousConvMode = DISABLE;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
-  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISING;
+  hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T2_TRGO;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
   hadc1.Init.NbrOfConversion = 1;
-  hadc1.Init.DMAContinuousRequests = DISABLE;
+  hadc1.Init.DMAContinuousRequests = ENABLE;
   hadc1.Init.EOCSelection = EOC_SINGLE_CONV;
   HAL_ADC_Init(&hadc1);
 
@@ -211,21 +225,8 @@ void MX_ADC1_Init(void)
     */
   sConfig.Channel = ADC_CHANNEL_1;
   sConfig.Rank = 1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_84CYCLES;
+  sConfig.SamplingTime = ADC_SAMPLETIME_28CYCLES;
   HAL_ADC_ConfigChannel(&hadc1, &sConfig);
-
-    /**Configures for the selected ADC injected channel its corresponding rank in the sequencer and its sample time 
-    */
-  sConfigInjected.InjectedChannel = ADC_CHANNEL_1;
-  sConfigInjected.InjectedRank = 1;
-  sConfigInjected.InjectedNbrOfConversion = 1;
-  sConfigInjected.InjectedSamplingTime = ADC_SAMPLETIME_84CYCLES;
-  sConfigInjected.ExternalTrigInjecConvEdge = ADC_EXTERNALTRIGINJECCONVEDGE_RISING;
-  sConfigInjected.ExternalTrigInjecConv = ADC_EXTERNALTRIGINJECCONV_T1_TRGO;
-  sConfigInjected.AutoInjectedConv = DISABLE;
-  sConfigInjected.InjectedDiscontinuousConvMode = DISABLE;
-  sConfigInjected.InjectedOffset = 0;
-  HAL_ADCEx_InjectedConfigChannel(&hadc1, &sConfigInjected);
 
 }
 
@@ -234,7 +235,6 @@ void MX_ADC2_Init(void)
 {
 
   ADC_ChannelConfTypeDef sConfig;
-  ADC_InjectionConfTypeDef sConfigInjected;
 
     /**Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion) 
     */
@@ -244,7 +244,8 @@ void MX_ADC2_Init(void)
   hadc2.Init.ScanConvMode = DISABLE;
   hadc2.Init.ContinuousConvMode = DISABLE;
   hadc2.Init.DiscontinuousConvMode = DISABLE;
-  hadc2.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+  hadc2.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISING;
+  hadc2.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T3_TRGO;
   hadc2.Init.DataAlign = ADC_DATAALIGN_RIGHT;
   hadc2.Init.NbrOfConversion = 1;
   hadc2.Init.DMAContinuousRequests = DISABLE;
@@ -257,19 +258,6 @@ void MX_ADC2_Init(void)
   sConfig.Rank = 1;
   sConfig.SamplingTime = ADC_SAMPLETIME_480CYCLES;
   HAL_ADC_ConfigChannel(&hadc2, &sConfig);
-
-    /**Configures for the selected ADC injected channel its corresponding rank in the sequencer and its sample time 
-    */
-  sConfigInjected.InjectedChannel = ADC_CHANNEL_2;
-  sConfigInjected.InjectedRank = 1;
-  sConfigInjected.InjectedNbrOfConversion = 1;
-  sConfigInjected.InjectedSamplingTime = ADC_SAMPLETIME_480CYCLES;
-  sConfigInjected.ExternalTrigInjecConvEdge = ADC_EXTERNALTRIGINJECCONVEDGE_RISING;
-  sConfigInjected.ExternalTrigInjecConv = ADC_EXTERNALTRIGINJECCONV_T1_TRGO;
-  sConfigInjected.AutoInjectedConv = DISABLE;
-  sConfigInjected.InjectedDiscontinuousConvMode = DISABLE;
-  sConfigInjected.InjectedOffset = 0;
-  HAL_ADCEx_InjectedConfigChannel(&hadc2, &sConfigInjected);
 
 }
 
@@ -286,51 +274,55 @@ void MX_DAC_Init(void)
 
     /**DAC channel OUT1 config 
     */
-  sConfig.DAC_Trigger = DAC_TRIGGER_T6_TRGO;
+  sConfig.DAC_Trigger = DAC_TRIGGER_T2_TRGO;
   sConfig.DAC_OutputBuffer = DAC_OUTPUTBUFFER_ENABLE;
   HAL_DAC_ConfigChannel(&hdac, &sConfig, DAC_CHANNEL_1);
 
 }
 
-/* TIM1 init function */
-void MX_TIM1_Init(void)
+/* TIM2 init function */
+void MX_TIM2_Init(void)
 {
 
   TIM_ClockConfigTypeDef sClockSourceConfig;
   TIM_MasterConfigTypeDef sMasterConfig;
 
-  htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 95;
-  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 128;
-  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim1.Init.RepetitionCounter = 0;
-  HAL_TIM_Base_Init(&htim1);
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 47;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 4;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  HAL_TIM_Base_Init(&htim2);
 
   sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-  HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig);
+  HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig);
 
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig);
+  HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig);
 
 }
 
-/* TIM6 init function */
-void MX_TIM6_Init(void)
+/* TIM3 init function */
+void MX_TIM3_Init(void)
 {
 
+  TIM_ClockConfigTypeDef sClockSourceConfig;
   TIM_MasterConfigTypeDef sMasterConfig;
 
-  htim6.Instance = TIM6;
-  htim6.Init.Prescaler = 0;
-  htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim6.Init.Period = 96;
-  HAL_TIM_Base_Init(&htim6);
+  htim3.Instance = TIM3;
+  htim3.Init.Prescaler = 47;
+  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim3.Init.Period = 256;
+  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  HAL_TIM_Base_Init(&htim3);
+
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig);
 
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  HAL_TIMEx_MasterConfigSynchronization(&htim6, &sMasterConfig);
+  HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig);
 
 }
 
@@ -356,11 +348,14 @@ void MX_USART1_UART_Init(unsigned rate)
 void MX_DMA_Init(void) 
 {
   /* DMA controller clock enable */
+  __DMA2_CLK_ENABLE();
   __DMA1_CLK_ENABLE();
 
   /* DMA interrupt init */
   HAL_NVIC_SetPriority(DMA1_Stream5_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Stream5_IRQn);
+  HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
 
 }
 
@@ -406,25 +401,25 @@ void MX_GPIO_Init(void)
   */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-  if (htim == &htim1) {
+  if (htim == &htim3) {
     // Test
-    static uint8_t msg[] = " *";
+    static uint8_t msg[] = "c";
     HAL_StatusTypeDef res = HAL_UART_Transmit_IT(&huart1, msg, sizeof(msg)-1);
     assert(res != HAL_OK);
+    acquire_period();
   }
 }
 
 /**
-  * @brief  Injected conversion complete callback in non blocking mode 
+  * @brief  Regular conversion complete callback in non blocking mode 
   * @param  hadc: pointer to a ADC_HandleTypeDef structure that contains
   *         the configuration information for the specified ADC.
   * @retval None
   */
-void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef* hadc)
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
-  unsigned result = hadc->Instance->JDR1;
-  if (hadc == &hadc1) {
-  } else if (hadc == &hadc2) {
+  if (hadc == &hadc2) {
+	  acquire_phd(hadc->Instance->DR);
   }
 }
 

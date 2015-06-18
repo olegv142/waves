@@ -36,11 +36,8 @@
 
 /* USER CODE BEGIN Includes */
 
+#include "main.h"
 #include "acquisition.h"
-
-#define assert assert_param
-#define LED_ON  GPIO_PIN_RESET
-#define LED_OFF GPIO_PIN_SET
 
 /* USER CODE END Includes */
 
@@ -402,10 +399,6 @@ void MX_GPIO_Init(void)
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   if (htim == &htim3) {
-    // Test
-    static uint8_t msg[] = "c";
-    HAL_StatusTypeDef res = HAL_UART_Transmit_IT(&huart1, msg, sizeof(msg)-1);
-    assert(res != HAL_OK);
     acquire_period();
   }
 }
